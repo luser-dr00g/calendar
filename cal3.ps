@@ -1,0 +1,421 @@
+%!
+%cal3.ps Revised on:
+%Sat Jul 14 16:18:16 CDT 2012
+%3"x5" Calendars - M. Joshua Ryan (luser.droog@gmail.com)
+%Usage:
+%  gs [-doptions] cal3.ps 
+%  gs [-doptions] -- cal3.ps month year
+%-doptions ("environment" variables):
+%  -dmonth=mm   set starting month (1 = January)
+%  -dyear=yyyy  set starting year (> 1750, please)
+%  -dpages=n    set number of pages to produce (default is 1)
+%  -doutline    draw text as outlines
+%  -dcutmarks   eliminate edge lines and draw cutmarks
+%               (set by 4up and 5up formats)
+%  -dabbrev     use 3-letter names and 2-digit year
+%  -dwide       make names 2 spaces wide
+%  -dtall       make names double-tall, overrides -dwide
+%  -ddark       draw everything black, default is 50% gray
+%  -sformat=4up|5up   override default layout
+%           |6let  (experimental "page" layout)
+%           |6up   (proposed by tlvp, 6 2.7x5" cards)
+%
+%other useful gs options
+% -sDEVICE=pdfwrite -sOutputFile=out.pdf
+
+%set year and month here in the file,
+%or use -d option to predefine
+% eg. $gs -dmonth=2 -dyear=2013 cal3.ps
+%or use argument processing option -- 
+% eg. $gs -- cal3.ps 2 2013
+/year where { pop }{
+    /year 2014 def
+} ifelse
+/month where { pop }{
+    /month 1 def %1 = January
+} ifelse
+/ARGUMENTS where { pop
+    ARGUMENTS length 2 ne { Error:Must_set_both_month_and_year_in_ARGS } if
+    ARGUMENTS aload pop
+    /year exch cvi def
+    /month exch cvi def
+} if
+/boldfname /Helvetica-Bold def
+/romfname /Helvetica def
+
+0 0 0 setrgbcolor %select black color
+/newpage {
+    /dark where { pop }{
+        currentlinewidth .5 mul setlinewidth %thinner lines
+        .5 setgray %lighter lines
+    } ifelse
+} def
+
+%use -doutline option to draw text as outlines
+% eg. $gs -doutline cal3.ps
+/outline where { pop
+    /show { false charpath stroke } def
+} if
+
+%month table
+/initmtab {
+/mtab ({
+{ (January) 31 }
+{ (February) 28 }
+{ (March) 31 }
+{ (April) 30 }
+{ (May) 31 }
+{ (June) 30 }
+{ (July) 31 }
+{ (August) 31 }
+{ (September) 30 }
+{ (October) 31 }
+{ (November) 30 }
+{ (December) 31 }
+}) token pop exch pop cvlit def
+/abbrev where { pop
+    mtab {
+        0 2 copy get
+        0 3 getinterval
+        dup 1 2 copy get 32 sub put %toupper(str+1)
+        dup 2 2 copy get 32 sub put %toupper(str+2)
+        put
+    } forall
+} if
+} def initmtab
+
+%leap year
+/checkleap {
+/leap
+    year 4 mod 0 eq
+    year 100 mod 0 eq not
+    year 400 mod 0 eq or and
+def
+leap { mtab 1 get 1 29 put } if
+} def checkleap
+
+%day of week
+/checkdow {
+[ 4 2 0 6 4 2 0 6 4 2 ]
+year 1700 sub 100 idiv get
+year 100 mod dup 4 idiv add add
+[ leap{6 2}{0 3}ifelse 3 6 1 4 6 2 5 0 3 5 ] month 1 sub get add
+1 add
+/dow exch 7 mod def
+} def checkdow
+
+%grid coords
+/3x5 {
+    /X [ 0 51 103 154 206 257 309 360 ] def
+    /Y [ 216 180 144 108 72 36 0 ] def
+} def
+
+%/cuts { %hard-coded for 3x5 cards
+%    0 18 0 0 18 0 moveto lineto lineto
+%    342 0 360 0 360 18 moveto lineto lineto
+%    360 198 360 216 342 216 moveto lineto lineto
+%    18 216 0 216 0 198 moveto lineto lineto
+%} def
+
+/setdim { % dx dy
+    /Y exch [ exch dup cvi -6 div floor cvi 0 {} for 0 ] def
+    /X exch [ 1 index 0 exch dup cvi 7 div ceiling cvi exch {} for
+        counttomark 1 add index ] exch pop def
+} def
+
+/dz 9 def
+/cuts {
+    gsave .1 setlinewidth .8 setgray
+    0 dz 0 0 dz 0 moveto lineto lineto
+    X 7 get dup dz sub exch 0 exch 0 1 index dz moveto lineto lineto
+    X 7 get Y 0 get dup dz sub exch 2 index exch 1 index dz sub 1 index moveto lineto lineto
+    dz Y 0 get 0 1 index 0 1 index dz sub moveto lineto lineto
+    stroke
+    grestore
+} def
+
+/coord {
+    exch X exch get
+    exch Y exch get
+} def
+
+/++ { dup load 1 add def } def
+
+/setupfonts {
+    /daystring 2 string def
+    /yearstring /abbrev where { pop 2 }{ 4 } ifelse string def
+    /setyearstring {
+        year
+        /abbrev where { pop 100 mod } if
+        yearstring cvs pop
+        romfname 1 selectfont
+        romfname [
+        X
+        /wide where { pop
+            /tall where { pop 1 }{ 2 } ifelse
+        }{ 1 } ifelse
+        get 4 sub yearstring stringwidth pop div
+        0 0
+        /tall where { pop 32 }{ 16 } ifelse
+        /noyear where { pop pop 14 } if
+        0 0 ] selectfont
+        /yearfont currentfont def
+    } def setyearstring
+    /daysize 8 def
+    /dayfont romfname daysize selectfont currentfont def
+} def
+
+/domonth {
+    /shift 0 def
+    /cutmarks where { pop cuts } if
+    boldfname 1 selectfont
+    mtab month 1 sub get 0 get% name
+    /tall where { pop
+        0 1 coord moveto 2 2 rmoveto
+        dup stringwidth pop X 1 get 4 sub exch div
+        [ exch 0 0 32 0 0 ] boldfname exch selectfont show
+        1 1 coord moveto 2 2 rmoveto
+        currentgray
+        /dark where { pop }{ .7 setgray } ifelse
+        /noyear where { pop }{ yearfont setfont yearstring show } ifelse
+        setgray
+    }{
+        X 0 get 2 add
+        Y 1 get 2 copy
+        /noyear where { pop 10 }{ 20 } ifelse
+        add
+        moveto 3 2 roll
+        dup stringwidth pop X
+        /wide where { pop 2 }{ 1 } ifelse
+        get 4 sub exch div 
+        [ exch 0 0
+        /noyear where { pop 32 }{ 16 } ifelse
+        0 0 ] boldfname exch selectfont
+        show 
+        2 add moveto
+        currentgray
+        /dark where { pop }{ .7 setgray } ifelse
+        /noyear where { pop }{ yearfont setfont yearstring show } ifelse
+        setgray
+    } ifelse
+
+    /edow dow mtab month 1 sub get 1 get add 7 mod def
+    /nweeks dow mtab month 1 sub get 1 get add 7 idiv def
+
+    dow 2 lt {
+        /shift 1 def
+        0 -36 translate
+        X dow get Y 0 get
+        X 7 get 1 index moveto lineto
+    }{
+        /cutmarks where { pop }{
+            X dow get Y 0 get
+            X 7 get 1 index moveto lineto
+        } ifelse
+    } ifelse
+
+    /cutmarks where { pop 1 }{ 0 } ifelse
+    1
+    /cutmarks where { pop 6 }{ 7 } ifelse
+        { %vert
+        dup dow lt {1}{0} ifelse
+        1 index dup edow gt {nweeks}{nweeks 1 add} ifelse
+        coord moveto
+        coord lineto
+    } for
+
+    1 1 nweeks { %horz
+        0 exch 7 1 index
+        coord moveto
+        coord lineto
+    } for
+
+    /cutmarks where { pop
+        nweeks shift add 5 lt { %final line if not on bottom
+            X 0 get Y nweeks 1 add get
+            X edow get 1 index moveto lineto
+        } if
+    }{
+        X 0 get Y nweeks 1 add get
+        X edow get 1 index moveto lineto
+    } ifelse
+    stroke
+
+    dayfont setfont
+    /week 1 def
+    1 1 mtab month 1 sub get 1 get {
+        X dow get   2 add
+        Y week get  36 daysize sub add moveto
+        daystring cvs show
+        /dow ++
+        dow 7 eq { /dow 0 def /week ++ } if
+    } for
+
+} def
+
+/nextmonth {
+    /month ++
+    month 12 gt {
+        /month 1 def
+        /year ++
+        setyearstring
+        initmtab
+        checkleap
+    } if
+    checkdow
+} def
+
+
+/5up {
+    18 18 36 add translate % 1/4" margin
+    /cutmarks true def
+    3x5 setupfonts
+    gsave
+        90 rotate
+        gsave
+            0 -216 translate
+            domonth
+            nextmonth
+        grestore
+        gsave
+            360 -216 translate
+            domonth
+            nextmonth
+        grestore
+    grestore
+
+    gsave
+        216 432 translate
+        domonth
+        nextmonth
+    grestore
+    gsave
+        216 216 translate
+        domonth
+        nextmonth
+    grestore
+    gsave
+        216 0 translate
+        domonth
+        nextmonth
+    grestore
+} def
+
+/4up {
+    18 18 translate % 1/4" margin
+    /cutmarks true def
+    3x5 setupfonts
+    90 rotate
+    2 {
+        0 -216 translate
+        gsave
+            domonth
+            nextmonth
+        grestore
+        gsave
+            360 0 translate
+            domonth
+            nextmonth
+        grestore
+    } repeat
+} def
+
+/yearbanner {
+    currentpoint exch pop
+    X 7 get 2 div exch moveto
+    yearfont setfont
+    yearstring stringwidth pop -2 div 0 rmoveto
+    yearstring show
+} def
+
+/6let {
+    /wide true def
+    /noyear true def
+    18 18 translate % 1/4" margin
+    /x 612 36 sub def
+    /y 792 36 sub def
+    x 2 div 10 sub
+    y 3 div 10 sub setdim
+    setupfonts
+    0 y translate
+
+    0 -6 moveto
+    yearbanner %draw first banner explicitly
+
+    %test banner on every month
+    /domonth { 0 Y 0 get 4 add moveto
+        yearbanner //domonth exec } clear%def
+
+    /domonth { %hook banner on year change
+        //domonth exec %first call runs normally, then
+        /domonth {
+            month 1 eq {
+                0 Y 0 get 4 add moveto
+                yearbanner
+            } if
+            //domonth exec
+        } def %delayed hook
+    } def
+
+    3 {
+        0 y 3 div neg translate
+        gsave
+        2 {
+            gsave
+                domonth
+                nextmonth
+            grestore
+            x 2 div 0 translate
+        } repeat
+        grestore
+    } repeat
+} def
+
+/6up {
+    /dx 5 72 mul def
+    /dy 2.7 72 mul def
+    dx dy setdim setupfonts
+    /x 596 def
+    /y 842 def
+    /cutmarks true def
+
+    18 18 translate
+    %0 y translate
+    90 rotate
+
+    3 {
+        0 dy neg translate
+        gsave
+        2 {
+            gsave
+                domonth
+                nextmonth
+            grestore
+            dx 0 translate
+        } repeat
+        grestore
+    } repeat
+} def
+
+%use -dpages=n to keep advancing
+/pages where { pop pages }{ 1 } ifelse
+{
+    newpage
+
+    %override format option
+    %use gs option -sformat=...
+    %  eg. %gs -sformat=5up -- cal3.ps 6 2013
+    /format where { pop
+        format cvx exec
+    }{ %default
+        5up
+        %4up
+        %6let
+        %6up
+    } ifelse
+
+    showpage
+
+} repeat
+
+%eof

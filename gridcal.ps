@@ -1,0 +1,439 @@
+%!
+{currentfile token pop/ENDCOMMENT eq{exit}if}loop
+
+calendar.ps
+
+A postscript grid calendar.
+Months are displayed in columns from left to right.
+Days descend sequentially with weeks indicated by
+a darker shading on Saturday and Sunday.
+
+You may change any of the parameters freely to modify
+the format. My favorites are /landscape false , /mpp 12
+and /landscape true , /mpp 6 .
+
+ENDCOMMENT
+
+
+%utility
+/++ {dup load 1 add store} bind def
+/in {72 mul} bind def
+/cm {in 2.54 div} def
+/mm {cm 10 div} def
+
+%paper sizes
+/A0 [ 841 mm 1189 mm ] def
+/A1 A0 aload pop 2 div exch 2 array astore def
+/A2 A1 aload pop 2 div exch 2 array astore def
+/A3 A2 aload pop 2 div exch 2 array astore def
+/A4 A3 aload pop 2 div exch 2 array astore def
+/A5 A4 aload pop 2 div exch 2 array astore def
+/letter [ 8.5 in 11 in ] def
+/legal  [ 8.5 in 14 in ] def
+/tabloid [ 11 in 17 in ] def
+
+
+%parameters
+/year dup where { pop pop }{ 2014 def } ifelse
+/paper dup where { 1 index load cvx exec def }{ letter def } ifelse
+/border dup where { 1 index load cvx exec def }{ 0.5 in def } ifelse
+/weekend dup where { pop pop }{ .7 def } ifelse         % shading for Saturday, Sunday ( 0 .. 1 )
+/weekday dup where { pop pop }{ .9 def } ifelse        % shading for Monday-Friday ( 0 .. 1 )
+/mpp dup where { pop pop }{ 1 def } ifelse            % months per page ( 1 .. 12 ) 
+/landscape dup where { pop pop }{ false def } ifelse     % false for portrait
+/fs dup where { pop pop }{ 36 def } ifelse             % font size for year
+/lead fs .33 mul def     % spacing between year and month and grid
+/useplanets dup where { pop pop }{ true def } ifelse     % false for textual day names
+/showhours dup where { pop pop }{ true def } ifelse     % draw a shaded grid in the daybox
+/day dup where { pop pop }{ 1 def } ifelse             % shading for 6am to 6pm
+/night dup where { pop pop }{ .8 def } ifelse           % shading for 12am to 6am and 6pm to 12am
+
+
+%font for year and months (months will be rescaled)
+/disfont /Palatino-Roman findfont fs scalefont def
+
+%font for day of month number
+/numfont /Palatino-Roman findfont def
+
+%planet font for days of the week
+10 dict dup begin
+/FontType 3 def
+/FontMatrix [.001 0 0 .001 0 0]def
+/FontBBox [49 99 900 1000]def
+/Encoding 256 array def
+0 1 255 {Encoding exch /.notdef put} for
+Encoding
+    dup (0) 0 get /moon put
+    dup (1) 0 get /mars put
+    dup (2) 0 get /mercury put
+    dup (3) 0 get /jupiter put
+    dup (4) 0 get /venus put
+    dup (5) 0 get /saturn put
+    dup (6) 0 get /sun put
+    pop
+/Metrics 8 dict def
+Metrics begin
+    /.notdef 0 def
+    /moon 700 def
+    /mars 700 def
+    /mercury 800 def
+    /jupiter 700 def
+    /venus 800 def
+    /saturn 800 def
+    /sun 1000 def
+end
+/BBox 8 dict def
+BBox begin
+    /.notdef [0 0 0 0] def
+    /moon [40 90 700 900] def
+    /mars [90 90 800 800] def
+    /mercury [200 90 800 1000] def
+    /jupiter [100 90 800 1000] def
+    /venus [90 90 900 900] def
+    /saturn [90 120 800 900] def
+    /sun [90 90 1000 1000] def
+end
+/CharacterDefs 5 dict def
+CharacterDefs begin
+    /.notdef {} def
+
+    /moon {
+        300 500 translate
+        newpath
+        -50 -400 moveto
+        500 -450
+        500 450
+        -50 400 curveto
+        200 300
+        200 -300
+        -50 -400 curveto
+        closepath
+        stroke
+    } def
+
+    /mars {
+        newpath
+        300 300 200 45 405 arc
+        700 700 lineto
+        600 700 lineto
+        700 700 lineto
+        700 600 lineto
+        stroke
+    } def
+
+    /mercury {
+        newpath
+        500 700 200 -90 270 arc
+        500 100 lineto
+        500 300 lineto
+        400 300 lineto
+        600 300 lineto
+        stroke
+        500 1000 100 180 0 arc
+        stroke
+    } def
+
+    /jupiter {
+        newpath
+        100 700 moveto
+        400 700 400 500 100 300 curveto
+        800 300 lineto
+        500 800 moveto
+        500 100 lineto
+        stroke
+    } def
+
+    /venus {
+        newpath
+        500 700 200 -90 270 arc
+        500 100 lineto
+        500 300 lineto
+        400 300 lineto
+        600 300 lineto
+        stroke
+    } def
+
+    /saturn {
+        newpath
+        100 700 moveto
+        700 700 lineto
+        300 800 moveto
+        300 300 lineto
+        400 400 500 350 500 250 curveto
+        400 100 550 100 600 200 curveto
+        stroke
+    } def
+
+    /sun {
+        newpath 500 500 400 0 360 arc stroke
+        newpath 500 500 100 0 360 arc fill
+    } def
+end
+
+/BuildChar {
+DICT begin
+    /char exch def
+    /fontdict exch def
+    /charname fontdict /Encoding get char get def
+    fontdict begin
+        Metrics charname get 0
+        BBox charname get aload pop setcachedevice
+        0 setlinejoin
+        30 setlinewidth
+        CharacterDefs charname get exec
+    end
+end
+} dup 0 3 dict put def
+/UniqueID 1 def
+end
+
+/Planets exch definefont pop
+
+/dayfont
+    useplanets { /Planets findfont }{ numfont } ifelse
+def
+
+%month table
+/mtab [
+[ (January) 31 ]
+[ (February) 28 ]
+[ (March) 31 ]
+[ (April) 30 ]
+[ (May) 31 ]
+[ (June) 30 ]
+[ (July) 31 ]
+[ (August) 31 ]
+[ (September) 30 ]
+[ (October) 31 ]
+[ (November) 30 ]
+[ (December) 31 ]
+] def
+
+%week table
+/wtab
+    useplanets {
+        [ (0) (1) (2) (3) (4) (5) (6) ]
+    }{
+        [ (Mo) (Tu) (We) (Th) (Fr) (Sa) (Su) ]
+    } ifelse
+def
+
+%leap year
+/leap
+    year 4 mod 0 eq
+    year 100 mod 0 eq not
+    year 400 mod 0 eq or and
+def
+leap { mtab 1 get 1 29 put } if
+
+%day of year
+/doy 0 def
+
+%day of week
+[ 4 2 0 6 4 2 0 6 4 2 ]
+year 1700 sub 100 idiv get
+year 100 mod dup 4 idiv add add
+leap { 6 add } if
+/dow exch 1 sub def
+
+%page width and height
+/wid paper 0 get def
+/hth paper 1 get def
+
+%swap dimensions for landscape
+landscape {
+    /wid hth /hth wid def def
+} if
+
+%upper and lower bounds
+/X wid border sub def
+/yearY hth border sub fs sub def
+/Y yearY fs sub lead sub def
+/x border def
+/y border def
+
+%width of a daybox
+/dx X x sub mpp div def
+
+%height of a daybox
+/dy Y y sub 31 div def
+
+%scale the month font so widest month name fits
+/monfont disfont
+    disfont setfont (September_) stringwidth pop
+    dx exch div
+    %don't make the month any bigger than the year
+    dup 1 gt {
+        pop
+    }{
+        dup lead mul /lead exch def
+        scalefont
+    } ifelse
+def
+
+%scale the day label fonts to a little less than half
+%of the height of the daybox
+%so 2 lines fit snugly
+/fs dy 2 div .9 mul def
+/numfont numfont fs scalefont def
+/dayfont dayfont fs scalefont def
+
+/box { % {op} w h gray
+    setgray
+    1 index 0 rlineto
+    0 1 index neg rlineto
+    pop neg 0 rlineto
+    closepath
+    exec
+} def
+
+/drawhours {
+    DUMMY begin
+    /night exch def
+    /day exch def
+    /h exch def
+    /w exch def
+    gsave
+        currentpoint translate
+
+        %early morning
+        {fill} w 4 div h night box
+
+        %day
+        w .25 mul 0 moveto
+        {fill} w 2 div h day box
+
+        %evening
+        w .75 mul 0 moveto
+        {fill} w 4 div h night box
+
+        %hours
+        .7 setgray
+        0 w 24 div w { %for
+            0 moveto
+            0 h neg rlineto stroke
+        } for
+
+        %3-hour blocks
+        .4 setgray
+        0 w 8 div w {
+            0 moveto
+            0 h neg rlineto stroke
+        } for
+
+        %box all around
+        0 0 moveto
+        {stroke} w h 0 box
+
+    grestore
+    end
+} dup 0 2 dict put def
+
+/startpage {
+    landscape {
+        hth 0 translate
+        90 rotate
+    } if
+    x Y moveto
+    disfont setfont
+    gsave
+        %0 13 rmoveto
+        x yearY moveto
+        year (    ) cvs
+        false charpath stroke
+        %show
+    grestore
+} def
+
+%the script
+
+startpage
+
+0 1 mtab length 1 sub { %for
+
+    %start a new page if we're not at the beginning
+    %but (and) the index (month - 1) is evenly
+    %divisible by months-per-page
+    dup dup 0 ne exch mpp mod 0 eq and {
+        showpage
+        startpage
+    } if
+
+    mtab exch get % [ (monthname) ndays ]
+
+    % display month name a little above the top
+    dup 0 get % (monthname)
+    gsave
+        0 lead rmoveto
+        monfont setfont
+        dup stringwidth exch dx exch sub 2 div exch rmoveto
+        % the above line causes ghostscript
+        % to run noticeably slower
+        show
+    grestore
+
+    % display all the days of the month
+    /dom 0 def
+    1 get % ndays
+    gsave
+    { %repeat
+
+        % increment counters
+        /doy ++
+        /dom ++
+        /dow dup load 1 add 7 mod def
+
+        % fill and stroke the daybox
+        dx 0 rlineto
+        0 dy neg rlineto
+        dx neg 0 rlineto
+        gsave
+            dow 5 lt { weekday } { weekend } ifelse setgray
+            closepath fill
+        grestore
+        currentpoint
+            closepath stroke
+        moveto
+
+        gsave
+            % display day of month number
+            0 dy rmoveto
+            %2 fs -1.1 mul rmoveto % add 10% lead
+            2 fs neg rmoveto
+            currentpoint
+            numfont setfont
+            dom (   ) cvs
+            dup length 1 eq { ( ) show } if
+            show
+            moveto
+
+            % and day of week name
+            0 fs -1.1 mul rmoveto
+            %(  ) show
+            dayfont setfont
+            wtab
+            dow get show
+
+            % draw grid of hours
+            showhours {
+                grestore gsave % get saved currentpoint
+                dy dy rmoveto
+                dx dy sub dy % width and height
+                dow 5 lt     % day and night
+                %{ 1 .8 }{ .9 weekend } ifelse
+                { day night }
+                { weekend weekday sub dup day add exch night add }
+                ifelse
+                drawhours
+            } if
+        grestore
+
+    } repeat % each day
+    grestore
+
+    % reposition for next month
+    dx 0 rmoveto
+
+} for
+
+showpage
